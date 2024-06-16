@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthentication("cookie")
-    .AddCookie("cookie")
+    .AddCookie("cookie", o => { o.LoginPath = "/kc-login"; })
     .AddOAuth("keycloak", o =>
     {
         o.SignInScheme = "cookie";
@@ -18,7 +18,6 @@ builder.Services.AddAuthentication("cookie")
         o.AuthorizationEndpoint = "http://localhost:8080/realms/myrealm/protocol/openid-connect/auth";
         o.TokenEndpoint = "http://localhost:8080/realms/myrealm/protocol/openid-connect/token";
         o.UserInformationEndpoint = "http://localhost:8080/realms/myrealm/protocol/openid-connect/userinfo";
-
         o.CallbackPath = "/oauth/keycloak-cb";
 
         o.Scope.Add("openid");
@@ -42,18 +41,18 @@ builder.Services.AddAuthentication("cookie")
     });
 
 builder.Services.AddAuthorization();
-
 var app = builder.Build();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => "Unauthorized");
-app.MapGet("/info", (HttpContext ctx) => ctx.User.Claims.Select(claim => new { claim.Type, claim.Value }).ToList())
-    .RequireAuthorization();
+app.MapGet("/", (HttpContext ctx) => ctx.User.Claims.Select(claim => new { claim.Type, claim.Value }).ToList());
+
+app.MapGet("/secret", () => "secret").RequireAuthorization();
 
 app.MapGet("/kc-login", () => Results.Challenge(new AuthenticationProperties
 {
-    RedirectUri = "http://localhost:5000/"
-}, authenticationSchemes: ["keycloak"])).AllowAnonymous();
+    RedirectUri = "http://localhost:5000/",
+}, authenticationSchemes: ["keycloak"]));
 
 app.Run();
